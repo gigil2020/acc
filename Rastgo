@@ -1,0 +1,8 @@
+{
+    "type": "ssh",
+    "server": "31.57.63.246",
+    "server_port": 22,
+    "user": "root",
+    "password": "Tehran@2026",
+    "client_version": "SSH-2.0-OpenSSH_7.4p1"
+}
