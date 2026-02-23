@@ -1,198 +1,685 @@
 {
-  "dns": {
-    "final": "local-dns",
-    "rules": [
-      {
-        "action": "route",
-        "clash_mode": "Global",
-        "server": "proxy-dns",
-        "source_ip_cidr": [
-          "172.19.0.0/30",
-          "fdfe:dcba:9876::1/126"
-        ]
-      },
-      {
-        "action": "route",
-        "server": "proxy-dns",
-        "source_ip_cidr": [
-          "172.19.0.0/30",
-          "fdfe:dcba:9876::1/126"
-        ]
-      },
-      {
-        "action": "route",
-        "clash_mode": "Direct",
-        "server": "direct-dns"
-      },
-      {
-        "action": "route",
-        "rule_set": [
-          "geosite-ir"
+    "log": {
+        "disabled": false,
+        "level": "warn",
+        "timestamp": true
+    },
+    "dns": {
+        "servers": [
+            {
+                "type": "https",
+                "server": "dns.adguard-dns.com",
+                "detour": "✅ Selector",
+                "tag": "dns-remote"
+            },
+            {
+                "type": "udp",
+                "server": "8.8.8.8",
+                "tag": "dns-direct"
+            },
+            {
+                "type": "hosts",
+                "predefined": {
+                    "dns.adguard-dns.com": [
+                        "94.140.14.14",
+                        "94.140.15.15",
+                        "2a10:50c0::ad1:ff",
+                        "2a10:50c0::ad2:ff"
+                    ]
+                },
+                "tag": "hosts"
+            }
         ],
-        "server": "direct-dns"
-      }
-    ],
-    "servers": [
-      {
-        "address": "tcp://8.8.8.8",
-        "address_resolver": "local-dns",
-        "detour": "proxy",
-        "tag": "proxy-dns"
-      },
-      {
-        "address": "local",
-        "detour": "direct",
-        "tag": "local-dns"
-      },
-      {
-        "address": "local",
-        "detour": "direct",
-        "tag": "direct-dns"
-      }
-    ],
-    "strategy": "prefer_ipv4"
-  },
-  "inbounds": [
-    {
-      "address": [
-        "172.19.0.1/30",
-        "fdfe:dcba:9876::1/126"
-      ],
-      "auto_route": true,
-      "endpoint_independent_nat": false,
-      "mtu": 9000,
-      "platform": {
-        "http_proxy": {
-          "enabled": true,
-          "server": "127.0.0.1",
-          "server_port": 2080
+        "rules": [
+            {
+                "ip_accept_any": true,
+                "server": "hosts"
+            },
+            {
+                "clash_mode": "Direct",
+                "server": "dns-direct"
+            },
+            {
+                "clash_mode": "Global",
+                "server": "dns-remote"
+            },
+            {
+                "domain_suffix": [
+                    "tappersia.com"
+                ],
+                "query_type": [
+                    "HTTPS"
+                ],
+                "action": "route",
+                "server": "dns-direct"
+            },
+            {
+                "rule_set": [
+                    "geosite-category-ads-all",
+                    "geosite-nsfw"
+                ],
+                "action": "reject"
+            },
+            {
+                "type": "logical",
+                "mode": "and",
+                "rules": [
+                    {
+                        "rule_set": [
+                            "geosite-ir"
+                        ]
+                    },
+                    {
+                        "rule_set": "geoip-ir"
+                    }
+                ],
+                "action": "route",
+                "server": "dns-direct"
+            }
+        ],
+        "strategy": "prefer_ipv4",
+        "independent_cache": true
+    },
+    "inbounds": [
+        {
+            "type": "tun",
+            "tag": "tun-in",
+            "address": [
+                "172.19.0.1/28"
+            ],
+            "mtu": 9000,
+            "auto_route": true,
+            "strict_route": true,
+            "stack": "mixed"
+        },
+        {
+            "type": "mixed",
+            "tag": "mixed-in",
+            "listen": "127.0.0.1",
+            "listen_port": 2080
         }
-      },
-      "stack": "system",
-      "strict_route": false,
-      "type": "tun"
-    },
-    {
-      "listen": "127.0.0.1",
-      "listen_port": 2080,
-      "type": "mixed",
-      "users": []
-    }
-  ],
-  "outbounds": [
-    {
-      "outbounds": [
-        "auto",
-        "direct",
-        "hysteria2-"
-      ],
-      "tag": "proxy",
-      "type": "selector"
-    },
-    {
-      "interval": "10m",
-      "outbounds": [
-        "hysteria2-"
-      ],
-      "tag": "auto",
-      "tolerance": 50,
-      "type": "urltest",
-      "url": "http://www.gstatic.com/generate_204"
-    },
-    {
-      "tag": "direct",
-      "type": "direct"
-    },
-    {
-      "obfs": {
-        "password": "LOKGbd$$%003d/",
-        "type": "salamander"
-      },
-      "password": "KexMceNyv1",
-      "server": "194.62.251.32",
-      "server_port": 443,
-      "tag": "hysteria2-",
-      "tls": {
-        "enabled": true,
-        "insecure": true
-      },
-      "type": "hysteria2"
-    }
-  ],
-  "route": {
-    "auto_detect_interface": true,
-    "final": "proxy",
-    "rule_set": [
-      {
-        "download_detour": "direct",
-        "format": "binary",
-        "tag": "geosite-ads",
-        "type": "remote",
-        "url": "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/category-ads-all.srs"
-      },
-      {
-        "download_detour": "direct",
-        "format": "binary",
-        "tag": "geosite-private",
-        "type": "remote",
-        "url": "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/private.srs"
-      },
-      {
-        "download_detour": "direct",
-        "format": "binary",
-        "tag": "geosite-ir",
-        "type": "remote",
-        "url": "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/category-ir.srs"
-      },
-      {
-        "download_detour": "direct",
-        "format": "binary",
-        "tag": "geoip-private",
-        "type": "remote",
-        "url": "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/private.srs"
-      },
-      {
-        "download_detour": "direct",
-        "format": "binary",
-        "tag": "geoip-ir",
-        "type": "remote",
-        "url": "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/ir.srs"
-      }
     ],
-    "rules": [
-      {
-        "action": "sniff"
-      },
-      {
-        "action": "route",
-        "clash_mode": "Direct",
-        "outbound": "direct"
-      },
-      {
-        "action": "route",
-        "clash_mode": "Global",
-        "outbound": "proxy"
-      },
-      {
-        "action": "hijack-dns",
-        "protocol": "dns"
-      },
-      {
-        "action": "route",
-        "outbound": "direct",
+    "outbounds": [
+        {
+            "tag": "💦 1 - VLESS - Domain : 443",
+            "type": "vless",
+            "server": "misty-lab-7b59.fovoki6026-d4c.workers.dev",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "uuid": "1738baa5-98ec-4758-a028-5c14cc5d64dd",
+            "packet_encoding": "",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "misTy-lAB-7b59.fovoki6026-D4C.WoRKeRS.DEv",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoiRERIRXU0M05nMkoiLCJwcm90b2NvbCI6InZsIiwibW9kZSI6InByb3h5aXAiLCJwYW5lbElQcyI6W119",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "tag": "💦 2 - VLESS - Domain : 443",
+            "type": "vless",
+            "server": "www.speedtest.net",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "uuid": "1738baa5-98ec-4758-a028-5c14cc5d64dd",
+            "packet_encoding": "",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "mIsty-LAB-7B59.FovOKI6026-d4C.woRKErs.dEV",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoiSFk0Q3ZhWmw4IiwicHJvdG9jb2wiOiJ2bCIsIm1vZGUiOiJwcm94eWlwIiwicGFuZWxJUHMiOltdfQ==",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "tag": "💦 3 - VLESS - IPv4 : 443",
+            "type": "vless",
+            "server": "188.114.97.3",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "uuid": "1738baa5-98ec-4758-a028-5c14cc5d64dd",
+            "packet_encoding": "",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "MiSty-LaB-7B59.FovOKi6026-d4c.WorKeRs.DEV",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoiMGRRU1N6cGMiLCJwcm90b2NvbCI6InZsIiwibW9kZSI6InByb3h5aXAiLCJwYW5lbElQcyI6W119",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "tag": "💦 4 - VLESS - IPv4 : 443",
+            "type": "vless",
+            "server": "188.114.96.3",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "uuid": "1738baa5-98ec-4758-a028-5c14cc5d64dd",
+            "packet_encoding": "",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "MISTy-Lab-7b59.fovoKi6026-d4C.WoRKErS.deV",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoiWDZOM2FLTGxIZEx5bEU3IiwicHJvdG9jb2wiOiJ2bCIsIm1vZGUiOiJwcm94eWlwIiwicGFuZWxJUHMiOltdfQ==",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "tag": "💦 5 - VLESS - IPv6 : 443",
+            "type": "vless",
+            "server": "[2a06:98c1:3120::3]",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "uuid": "1738baa5-98ec-4758-a028-5c14cc5d64dd",
+            "packet_encoding": "",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "MIsTY-Lab-7B59.FovokI6026-d4c.WoRKeRs.DeV",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoiQnJ1ZHBURlEiLCJwcm90b2NvbCI6InZsIiwibW9kZSI6InByb3h5aXAiLCJwYW5lbElQcyI6W119",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "tag": "💦 6 - VLESS - IPv6 : 443",
+            "type": "vless",
+            "server": "[2a06:98c1:3121::3]",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "uuid": "1738baa5-98ec-4758-a028-5c14cc5d64dd",
+            "packet_encoding": "",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "misTy-LAb-7b59.FovOKI6026-d4C.WoRkeRs.Dev",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoiWnU3VnNXQmpyajlkUnQiLCJwcm90b2NvbCI6InZsIiwibW9kZSI6InByb3h5aXAiLCJwYW5lbElQcyI6W119",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "tag": "💦 1 - Trojan - Domain : 443",
+            "type": "trojan",
+            "server": "misty-lab-7b59.fovoki6026-d4c.workers.dev",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "password": "0.f8wc'j)itr*5Fc",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "MISTY-LAb-7b59.fOVoKI6026-d4C.worKers.DEv",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoiaGZsS25xRFJEV1VKUUFYIiwicHJvdG9jb2wiOiJ0ciIsIm1vZGUiOiJwcm94eWlwIiwicGFuZWxJUHMiOltdfQ==",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "tag": "💦 2 - Trojan - Domain : 443",
+            "type": "trojan",
+            "server": "www.speedtest.net",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "password": "0.f8wc'j)itr*5Fc",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "MIStY-LAb-7b59.FOvoKi6026-D4c.woRKeRS.DEV",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoiZmlUb3FQZmsiLCJwcm90b2NvbCI6InRyIiwibW9kZSI6InByb3h5aXAiLCJwYW5lbElQcyI6W119",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "tag": "💦 3 - Trojan - IPv4 : 443",
+            "type": "trojan",
+            "server": "188.114.97.3",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "password": "0.f8wc'j)itr*5Fc",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "mISTy-LAb-7B59.foVOKI6026-D4C.worKERs.Dev",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoiSGpkQ1U4QnN1b0YiLCJwcm90b2NvbCI6InRyIiwibW9kZSI6InByb3h5aXAiLCJwYW5lbElQcyI6W119",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "tag": "💦 4 - Trojan - IPv4 : 443",
+            "type": "trojan",
+            "server": "188.114.96.3",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "password": "0.f8wc'j)itr*5Fc",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "MiSty-LaB-7B59.FOvOkI6026-D4c.worKeRs.DeV",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoidlBvbWZ6c3VGT1FRV3l5IiwicHJvdG9jb2wiOiJ0ciIsIm1vZGUiOiJwcm94eWlwIiwicGFuZWxJUHMiOltdfQ==",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "tag": "💦 5 - Trojan - IPv6 : 443",
+            "type": "trojan",
+            "server": "[2a06:98c1:3120::3]",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "password": "0.f8wc'j)itr*5Fc",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "MISty-LAb-7B59.FOvokI6026-d4C.WORKeRs.dEV",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoiOFN4NmxTSlJYQSIsInByb3RvY29sIjoidHIiLCJtb2RlIjoicHJveHlpcCIsInBhbmVsSVBzIjpbXX0=",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "tag": "💦 6 - Trojan - IPv6 : 443",
+            "type": "trojan",
+            "server": "[2a06:98c1:3121::3]",
+            "server_port": 443,
+            "tcp_fast_open": true,
+            "password": "0.f8wc'j)itr*5Fc",
+            "network": "tcp",
+            "tls": {
+                "enabled": true,
+                "server_name": "mISTy-LAB-7B59.fOvOkI6026-D4C.worKErS.dev",
+                "record_fragment": false,
+                "insecure": false,
+                "alpn": [
+                    "http/1.1"
+                ],
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                },
+                "ech": {
+                    "enabled": true,
+                    "query_server_name": "tappersia.com"
+                }
+            },
+            "transport": {
+                "type": "ws",
+                "path": "/eyJqdW5rIjoiRVFYUzNOaE9RIiwicHJvdG9jb2wiOiJ0ciIsIm1vZGUiOiJwcm94eWlwIiwicGFuZWxJUHMiOltdfQ==",
+                "max_early_data": 2560,
+                "early_data_header_name": "Sec-WebSocket-Protocol",
+                "headers": {
+                    "Host": "misty-lab-7b59.fovoki6026-d4c.workers.dev"
+                }
+            }
+        },
+        {
+            "type": "selector",
+            "tag": "✅ Selector",
+            "outbounds": [
+                "💦 Best Ping 🚀",
+                "💦 1 - VLESS - Domain : 443",
+                "💦 2 - VLESS - Domain : 443",
+                "💦 3 - VLESS - IPv4 : 443",
+                "💦 4 - VLESS - IPv4 : 443",
+                "💦 5 - VLESS - IPv6 : 443",
+                "💦 6 - VLESS - IPv6 : 443",
+                "💦 1 - Trojan - Domain : 443",
+                "💦 2 - Trojan - Domain : 443",
+                "💦 3 - Trojan - IPv4 : 443",
+                "💦 4 - Trojan - IPv4 : 443",
+                "💦 5 - Trojan - IPv6 : 443",
+                "💦 6 - Trojan - IPv6 : 443"
+            ],
+            "interrupt_exist_connections": false
+        },
+        {
+            "type": "direct",
+            "tag": "direct"
+        },
+        {
+            "type": "urltest",
+            "tag": "💦 Best Ping 🚀",
+            "outbounds": [
+                "💦 1 - VLESS - Domain : 443",
+                "💦 2 - VLESS - Domain : 443",
+                "💦 3 - VLESS - IPv4 : 443",
+                "💦 4 - VLESS - IPv4 : 443",
+                "💦 5 - VLESS - IPv6 : 443",
+                "💦 6 - VLESS - IPv6 : 443",
+                "💦 1 - Trojan - Domain : 443",
+                "💦 2 - Trojan - Domain : 443",
+                "💦 3 - Trojan - IPv4 : 443",
+                "💦 4 - Trojan - IPv4 : 443",
+                "💦 5 - Trojan - IPv6 : 443",
+                "💦 6 - Trojan - IPv6 : 443"
+            ],
+            "url": "https://www.gstatic.com/generate_204",
+            "interrupt_exist_connections": false,
+            "interval": "30s"
+        }
+    ],
+    "route": {
+        "rules": [
+            {
+                "ip_cidr": "172.19.0.2",
+                "action": "hijack-dns"
+            },
+            {
+                "clash_mode": "Direct",
+                "outbound": "direct"
+            },
+            {
+                "clash_mode": "Global",
+                "outbound": "✅ Selector"
+            },
+            {
+                "action": "sniff"
+            },
+            {
+                "protocol": "dns",
+                "action": "hijack-dns"
+            },
+            {
+                "ip_is_private": true,
+                "outbound": "direct"
+            },
+            {
+                "network": "udp",
+                "action": "reject"
+            },
+            {
+                "rule_set": [
+                    "geosite-category-ads-all",
+                    "geosite-nsfw"
+                ],
+                "action": "reject"
+            },
+            {
+                "rule_set": [
+                    "geosite-ir"
+                ],
+                "action": "route",
+                "outbound": "direct"
+            },
+            {
+                "rule_set": [
+                    "geoip-ir"
+                ],
+                "action": "route",
+                "outbound": "direct"
+            }
+        ],
         "rule_set": [
-          "geoip-private",
-          "geosite-private",
-          "geosite-ir",
-          "geoip-ir"
-        ]
-      },
-      {
-        "action": "reject",
-        "rule_set": [
-          "geosite-ads"
-        ]
-      }
-    ]
-  }
+            {
+                "type": "remote",
+                "tag": "geosite-category-ads-all",
+                "format": "binary",
+                "url": "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/geosite-category-ads-all.srs",
+                "download_detour": "direct"
+            },
+            {
+                "type": "remote",
+                "tag": "geosite-nsfw",
+                "format": "binary",
+                "url": "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/geosite-nsfw.srs",
+                "download_detour": "direct"
+            },
+            {
+                "type": "remote",
+                "tag": "geosite-ir",
+                "format": "binary",
+                "url": "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/geosite-ir.srs",
+                "download_detour": "direct"
+            },
+            {
+                "type": "remote",
+                "tag": "geoip-ir",
+                "format": "binary",
+                "url": "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/geoip-ir.srs",
+                "download_detour": "direct"
+            }
+        ],
+        "auto_detect_interface": true,
+        "default_domain_resolver": {
+            "server": "dns-direct",
+            "strategy": "prefer_ipv4",
+            "rewrite_ttl": 60
+        },
+        "final": "✅ Selector"
+    },
+    "ntp": {
+        "enabled": true,
+        "server": "time.cloudflare.com",
+        "server_port": 123,
+        "domain_resolver": "dns-direct",
+        "interval": "30m",
+        "write_to_system": false
+    },
+    "experimental": {
+        "cache_file": {
+            "enabled": true,
+            "store_fakeip": true
+        },
+        "clash_api": {
+            "external_controller": "127.0.0.1:9090",
+            "external_ui": "ui",
+            "default_mode": "Rule",
+            "external_ui_download_url": "https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip",
+            "external_ui_download_detour": "direct"
+        }
+    }
 }
